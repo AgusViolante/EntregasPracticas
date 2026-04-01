@@ -65,15 +65,16 @@ protected:
 	float MaxHealth;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	int32 DamageTicksReceived = 0;
+	int32 DamageTicksReceived = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stats")
-	int32 HealTicksReceived = 0;
+	int32 HealTicksReceived = 1;
 	
 public:
 
 	/** Constructor */
-	AEntregasPracticasCharacter();	
+	AEntregasPracticasCharacter();
+	void BeginPlay();
 
 protected:
 
@@ -113,6 +114,10 @@ public:
 	void ApplyHeal(float HealAmount);
 	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+	
+	UFUNCTION()
+	void OnHealthModifierTickReceived(bool bUseDamage, float Amount);
+	
 
 public:
 

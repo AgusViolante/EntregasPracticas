@@ -9,14 +9,25 @@
 class UBoxComponent;
 class AEntregasPracticasCharacter;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
+	FOnHealthModifierTick,
+	bool, bUseDamage,
+	float, Amount
+);
+
 UCLASS()
 class ENTREGASPRACTICAS_API AAHealthModifier : public AActor
 {
 	GENERATED_BODY()
+	
+	
 
 public:
 	// Sets default values for this actor's properties
 	AAHealthModifier();
+	
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnHealthModifierTick OnHealthModifierTick;
 
 protected:
 	// Called when the game starts or when spawned

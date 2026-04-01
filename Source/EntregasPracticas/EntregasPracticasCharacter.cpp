@@ -13,7 +13,11 @@
 #include "Components/SphereComponent.h"
 #include "InputActionValue.h"
 #include "EntregasPracticas.h"
+#include "EntregaPractica1/Items/AHealthModifier.h"
+#include "Kismet/GameplayStatics.h"
 #include "Public/EntregaPractica1/Components/FragmentComponent.h"
+
+class AAHealthModifier;
 
 AEntregasPracticasCharacter::AEntregasPracticasCharacter()
 {
@@ -64,6 +68,22 @@ AEntregasPracticasCharacter::AEntregasPracticasCharacter()
 	CurrentHealth = MaxHealth;
 	
 	FragmentComp = CreateDefaultSubobject<UFragmentComponent>(TEXT("FragmentComponent"));
+}
+
+void AEntregasPracticasCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	TArray<AActor*> FoundModifiers;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AAHealthModifier::StaticClass(), FoundModifiers);
+
+	for (AActor* Actor : FoundModifiers)
+	{
+		if (AAHealthModifier* Modifier = Cast<AAHealthModifier>(Actor))
+		{
+			Modifier->OnHealthModifierTick.AddDynamic(this, &AEntregasPracticasCharacter::OnHealthModifierTickReceived);
+		}
+	}
 }
 
 void AEntregasPracticasCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -181,7 +201,6 @@ void AEntregasPracticasCharacter::ApplyHeal(float HealAmount)
 	}
 
 	CurrentHealth = FMath::Clamp(CurrentHealth + HealAmount, 0.0f, MaxHealth);
-	HealTicksReceived++;
 
 	if (GEngine)
 	{
@@ -203,7 +222,6 @@ float AEntregasPracticasCharacter::TakeDamage(float DamageAmount, FDamageEvent c
 	}
 
 	CurrentHealth = FMath::Clamp(CurrentHealth - DamageAmount, 0.0f, MaxHealth);
-	DamageTicksReceived++;
 
 	if (GEngine)
 	{
@@ -217,4 +235,16 @@ float AEntregasPracticasCharacter::TakeDamage(float DamageAmount, FDamageEvent c
 	}
 
 	return DamageAmount;
+}
+
+void AEntregasPracticasCharacter::OnHealthModifierTickReceived(bool bUseDamage, float Amount)
+{
+	if (bUseDamage)
+	{
+		DamageTicksReceived++;
+	}
+	else
+	{
+		HealTicksReceived++;
+	}
 }

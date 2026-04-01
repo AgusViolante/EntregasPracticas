@@ -104,6 +104,7 @@ void AAHealthModifier::ApplyEffect()
 	{
 		OverlappingCharacter->ApplyHeal(EffectAmount);
 	}
+	OnHealthModifierTick.Broadcast(bUseDamage, EffectAmount);
 }
 
 // Called every frame
