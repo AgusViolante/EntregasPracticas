@@ -16,6 +16,7 @@
 #include "EntregaPractica1/Items/AHealthModifier.h"
 #include "Kismet/GameplayStatics.h"
 #include "Public/EntregaPractica1/Components/FragmentComponent.h"
+#include "Net/UnrealNetwork.h"
 
 class AAHealthModifier;
 
@@ -66,6 +67,9 @@ AEntregasPracticasCharacter::AEntregasPracticasCharacter()
 	
 	MaxHealth = 100.0f;
 	CurrentHealth = MaxHealth;
+
+	bReplicates = true;
+	SetReplicateMovement(true);
 	
 	FragmentComp = CreateDefaultSubobject<UFragmentComponent>(TEXT("FragmentComponent"));
 }
@@ -84,13 +88,20 @@ void AEntregasPracticasCharacter::BeginPlay()
 			Modifier->OnHealthModifierTick.AddDynamic(this, &AEntregasPracticasCharacter::OnHealthModifierTickReceived);
 		}
 	}
+
+	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
+}
+
+void AEntregasPracticasCharacter::OnRep_CurrentHealth()
+{
+	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 }
 
 void AEntregasPracticasCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
 		// Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
@@ -115,19 +126,13 @@ void AEntregasPracticasCharacter::PerformInteraction()
 	if (!InteractionSphere) return;
 
 	TArray<AActor*> OverlappingActors;
-
-	InteractionSphere-> GetOverlappingActors(OverlappingActors);
-
+	InteractionSphere->GetOverlappingActors(OverlappingActors);
 
 	for (AActor* HitActor : OverlappingActors)
 	{
-
 		if (HitActor && HitActor->Implements<UInteractableInterface>())
 		{
-
 			IInteractableInterface::Execute_Interact(HitActor, this);
-
-
 			break;
 		}
 	}
@@ -135,19 +140,13 @@ void AEntregasPracticasCharacter::PerformInteraction()
 
 void AEntregasPracticasCharacter::Move(const FInputActionValue& Value)
 {
-	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
-
-	// route the input
 	DoMove(MovementVector.X, MovementVector.Y);
 }
 
 void AEntregasPracticasCharacter::Look(const FInputActionValue& Value)
 {
-	// input is a Vector2D
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
-
-	// route the input
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
 }
 
@@ -155,17 +154,12 @@ void AEntregasPracticasCharacter::DoMove(float Right, float Forward)
 {
 	if (GetController() != nullptr)
 	{
-		// find out which way is forward
 		const FRotator Rotation = GetController()->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-		// get forward vector
 		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-
-		// get right vector 
 		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-		// add movement 
 		AddMovementInput(ForwardDirection, Forward);
 		AddMovementInput(RightDirection, Right);
 	}
@@ -175,7 +169,6 @@ void AEntregasPracticasCharacter::DoLook(float Yaw, float Pitch)
 {
 	if (GetController() != nullptr)
 	{
-		// add yaw and pitch input to controller
 		AddControllerYawInput(Yaw);
 		AddControllerPitchInput(Pitch);
 	}
@@ -183,13 +176,11 @@ void AEntregasPracticasCharacter::DoLook(float Yaw, float Pitch)
 
 void AEntregasPracticasCharacter::DoJumpStart()
 {
-	// signal the character to jump
 	Jump();
 }
 
 void AEntregasPracticasCharacter::DoJumpEnd()
 {
-	// signal the character to stop jumping
 	StopJumping();
 }
 
@@ -201,6 +192,12 @@ void AEntregasPracticasCharacter::ApplyHeal(float HealAmount)
 	}
 
 	CurrentHealth = FMath::Clamp(CurrentHealth + HealAmount, 0.0f, MaxHealth);
+	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
+
+	if (HasAuthority())
+	{
+		ForceNetUpdate();
+	}
 
 	if (GEngine)
 	{
@@ -222,6 +219,12 @@ float AEntregasPracticasCharacter::TakeDamage(float DamageAmount, FDamageEvent c
 	}
 
 	CurrentHealth = FMath::Clamp(CurrentHealth - DamageAmount, 0.0f, MaxHealth);
+	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
+
+	if (HasAuthority())
+	{
+		ForceNetUpdate();
+	}
 
 	if (GEngine)
 	{
@@ -247,4 +250,11 @@ void AEntregasPracticasCharacter::OnHealthModifierTickReceived(bool bUseDamage, 
 	{
 		HealTicksReceived++;
 	}
+}
+
+void AEntregasPracticasCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AEntregasPracticasCharacter, CurrentHealth);
 }

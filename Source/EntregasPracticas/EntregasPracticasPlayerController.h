@@ -8,6 +8,8 @@
 
 class UInputMappingContext;
 class UUserWidget;
+class UHealthWidget;
+class AEntregasPracticasCharacter;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -28,6 +30,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input|Input Mappings")
 	TArray<UInputMappingContext*> MobileExcludedMappingContexts;
 
+	/** UI de vida */
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<UHealthWidget> HealthWidgetClass;
+
+	/** UI instanciada */
+	UPROPERTY()
+	TObjectPtr<UHealthWidget> HealthWidget;
+
+	/** Character cacheado */
+	UPROPERTY()
+	TObjectPtr<AEntregasPracticasCharacter> CachedCharacter;
+
 	/** Mobile controls widget to spawn */
 	UPROPERTY(EditAnywhere, Category="Input|Touch Controls")
 	TSubclassOf<UUserWidget> MobileControlsWidgetClass;
@@ -46,7 +60,17 @@ protected:
 	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;
 
+	/** Llamado cuando posee un pawn */
+	virtual void OnPossess(APawn* InPawn) override;
+
+	/** Llamado en cliente cuando replica el pawn */
+	virtual void OnRep_Pawn() override;
+
 	/** Returns true if the player should use UMG touch controls */
 	bool ShouldUseTouchControls() const;
 
+	UFUNCTION()
+	void HandleHealthChanged(float CurrentHealth, float MaxHealth);
+
+	void BindToCharacter();
 };

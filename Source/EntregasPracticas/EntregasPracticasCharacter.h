@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Public/EntregaPractica1/InteractableInterface.h"
 #include "Logging/LogMacros.h"
+#include "Net/UnrealNetwork.h"
 #include "EntregasPracticasCharacter.generated.h"
 
 class USpringArmComponent;
@@ -15,6 +16,8 @@ class USphereComponent;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthChangedSignature, float, CurrentHealth, float, MaxHealth);
 
 /**
  *  A simple player-controllable third person character
@@ -58,7 +61,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* InteractableAction;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentHealth, EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float CurrentHealth;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
@@ -72,15 +75,17 @@ protected:
 	
 public:
 
+	UPROPERTY(BlueprintAssignable, Category="Stats")
+	FOnHealthChangedSignature OnHealthChanged;
+
 	/** Constructor */
 	AEntregasPracticasCharacter();
-	void BeginPlay();
+	virtual void BeginPlay() override;
 
 protected:
 
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	
 	
 	void PerformInteraction();
 
@@ -93,6 +98,9 @@ protected:
 	void Look(const FInputActionValue& Value);
 
 public:
+
+	UFUNCTION()
+	void OnRep_CurrentHealth();
 
 	/** Handles move inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Input")
@@ -117,8 +125,15 @@ public:
 	
 	UFUNCTION()
 	void OnHealthModifierTickReceived(bool bUseDamage, float Amount);
-	
 
+	UFUNCTION(BlueprintPure, Category="Stats")
+	float GetCurrentHealth() const { return CurrentHealth; }
+
+	UFUNCTION(BlueprintPure, Category="Stats")
+	float GetMaxHealth() const { return MaxHealth; }
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
 public:
 
 	/** Returns CameraBoom subobject **/
@@ -131,6 +146,3 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	class UFragmentComponent* FragmentComp;
 };
-
-
-
